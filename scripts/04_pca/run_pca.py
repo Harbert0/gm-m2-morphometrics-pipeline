@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
  
 # Step 1: Load the CSV file
-df = pd.read_csv('SuperImposed_GM_M2_4.csv')  
+df = pd.read_csv('__file_name__.csv')  
 # Strip whitespace and other non-visible characters from the column names
 df.columns = df.columns.str.replace(r'\s+', '', regex=True)
  
