@@ -16,6 +16,7 @@ Notes:
 - Features are coordinate columns (X*, Y*).
 - Data are standardized, then PCA is applied (retain 95% variance) prior to LDA.
 - Target defaults to 'Column1' (diet). Update TARGET_COL if needed.
+- Notebook-style implementation
 """
 
 import pandas as pd
