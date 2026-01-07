@@ -2,7 +2,7 @@
 Step 04: Principal Component Analysis (PCA) on Procrustes-aligned coordinates
 
 Input:
-- SuperImposed_GM_M2_4.csv  (metadata + Procrustes-aligned landmark coordinates)
+- metadata + Procrustes-aligned landmark coordinates
 
 Output:
 - PC_transformed_coordinates_with_metadata.csv
@@ -12,6 +12,7 @@ Output:
 Notes:
 - This script performs PCA on coordinate columns only (X*, Y*).
 - Metadata columns are preserved and concatenated back to PC scores.
+- Notebook-style implementation 
 """
 
 import pandas as pd
