@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
  
 # Load the data from a CSV file
-data = pd.read_csv('GM_M2_Metaconid_3_Cleaned.csv')
+data = pd.read_csv('__file_name__.csv')
  
 # Select only the coordinate columns (X1 to Y23)
 coordinate_columns = [
@@ -37,8 +37,8 @@ reshaped_coordinates = coordinates.reshape((num_specimens, num_landmarks, 2))
 # Convert reshaped coordinates to a 2D array for export
 flat_coordinates = reshaped_coordinates.reshape((num_specimens, num_landmarks * 2))
  
-# Export the data to a CSV file for R to read
+# Export the data to a CSV file 
 export_df = pd.DataFrame(flat_coordinates, columns=coordinate_columns)
-export_df.to_csv('landmarks_for_R.csv', index=False)
+export_df.to_csv('__file_name__.csv', index=False)
  
-print("Landmark data prepared and exported to 'landmarks_for_R.csv'")
+print("Landmark data prepared and exported to '__file_name__.csv'")
