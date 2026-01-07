@@ -2,13 +2,15 @@
 Step 05: Linear Discriminant Analysis (LDA) on Procrustes-aligned coordinates
 
 Input:
-- SuperImposed_GM_M2_4.csv (metadata + Procrustes-aligned landmark coordinates)
+-(metadata + Procrustes-aligned landmark coordinates csv
 
 Output:
-- results/tables/lda_metrics.json
-- results/tables/lda_misclassified.csv
-- results/figures/lda_confusion_matrix.png
-- results/figures/lda_learning_curve.png
+- Printed performance metrics (training accuracy, test accuracy, precision,
+  recall, F1 score, ROC-AUC)
+- Displayed figures (learning curve, confusion matrix heatmap, and decision
+  regions when applicable)
+- In-memory table of misclassified specimens (misclassified_table)
+
 
 Notes:
 - Features are coordinate columns (X*, Y*).
@@ -28,7 +30,7 @@ import numpy as np
 import seaborn as sns
  
 # Load the dataset
-file_path = 'SuperImposed_GM_M2_4.csv'
+file_path = '__file_name__.csv'
 data = pd.read_csv(file_path)
 data.columns = data.columns.str.replace(r'\s+', '', regex=True)
  
