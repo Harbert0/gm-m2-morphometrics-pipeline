@@ -54,3 +54,4 @@ for name, (clf, param_grid) in classifiers.items():
     plot_learning_curve(clf, X_train_pca, y_train, f"{name} Learning Curve for Principal Components", cv=cv, n_jobs=-1)
  
  
+
