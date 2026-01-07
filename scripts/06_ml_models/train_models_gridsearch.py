@@ -19,270 +19,153 @@ Notes:
 - This script does not save outputs to disk unless explicitly added (e.g., to_csv()).
 """
 
-
-import matplotlib.pyplot as plt
-from sklearn.model_selection import learning_curve, StratifiedKFold
- 
-def plot_learning_curve(estimator, X, y, title, cv=None, n_jobs=None, train_sizes=np.linspace(0.1, 1.0, 10)):
-    plt.figure()
-    plt.title(title)
-    plt.xlabel("Training examples")
-    plt.ylabel("Score")
- 
-    train_sizes, train_scores, test_scores = learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
-    train_scores_mean = np.mean(train_scores, axis=1)
-    train_scores_std = np.std(train_scores, axis=1)
-    test_scores_mean = np.mean(test_scores, axis=1)
-    test_scores_std = np.std(test_scores, axis=1)
- 
-    plt.grid()
- 
-    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
-                     train_scores_mean + train_scores_std, alpha=0.1,
-                     color="r")
-    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
-                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
-    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
-             label="Training score")
-    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
-             label="Cross-validation score")
- 
-    plt.legend(loc="best")
-    plt.show()
- 
-# Plot learning curves for each classifier
-cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
- 
-for name, (clf, param_grid) in classifiers.items():
-    plot_learning_curve(clf, X_train_pca, y_train, f"{name} Learning Curve for Principal Components", cv=cv, n_jobs=-1)
- 
- 
-
-Outputs:
-- Prints summary of best params and performance for each model
-- Saves misclassified instances for each model as CSV:
-  - misclassified_random_forest.csv
-  - misclassified_k_nearest_neighbors.csv
-  - misclassified_gradient_boosting.csv
-
-Notes:
-- Notebook-style implementation
-- StandardScaler + PCA(n_components=0.95) applied before model training
-"""
-
-
 import numpy as np
 import pandas as pd
-
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
-
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
-from sklearn.preprocessing import StandardScaler, LabelEncoder, LabelBinarizer
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
-
-from sklearn.metrics import (
-    classification_report,
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-)
-
-# -----------------------------
-# Load dataset
-# -----------------------------
-df = pd.read_csv("__file_name__.csv")
-df.columns = df.columns.str.replace(r"\s+", "", regex=True)
-
-# -----------------------------
-# Encode target variable (diet)
-# -----------------------------
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from scikeras.wrappers import KerasClassifier
+from sklearn.preprocessing import LabelBinarizer
+from tensorflow.keras.utils import to_categorical
+ 
+# Load the dataset
+data = pd.read_csv('__file_name__.csv')
+data.columns = data.columns.str.replace(r'\s+', '', regex=True)
+ 
+# Encode the target variable
 label_encoder = LabelEncoder()
-df["y_encoded"] = label_encoder.fit_transform(df["Column1"])
-
-# -----------------------------
+data['y_encoded'] = label_encoder.fit_transform(data['Column1'])
+ 
 # Split into features and target
-# -----------------------------
-X = df.iloc[:, 8:].apply(pd.to_numeric, errors="coerce").fillna(0)
-y = df["y_encoded"]
-
-# Keep metadata for misclassification tables
-has_species = "Species" in df.columns
-has_tribe = "Tribe" in df.columns
-has_filename = "File_Name" in df.columns
-
-# -----------------------------
-# Train-test split (stratified)
-# -----------------------------
-X_train, X_test, y_train, y_test, train_index, test_index = train_test_split(
-    X,
-    y,
-    df.index,
-    test_size=0.30,
-    random_state=42,
-    stratify=y
-)
-
-# -----------------------------
-# Standardize features
-# -----------------------------
+procrustes_coordinates = data.iloc[:, 8:].apply(pd.to_numeric, errors='coerce').fillna(0)
+target = data['y_encoded']
+ 
+# Standardize the features
 scaler = StandardScaler()
+ 
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test, train_index, test_index = train_test_split(procrustes_coordinates, target, data.index, test_size=0.3, random_state=42, stratify=target)
+ 
+# Fit the scaler on the training data and transform the training and test data
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
-
-# -----------------------------
-# PCA (retain 95% variance)
-# -----------------------------
+ 
+# Apply PCA transformation on the training set only
 pca = PCA(n_components=0.95)
 X_train_pca = pca.fit_transform(X_train_scaled)
 X_test_pca = pca.transform(X_test_scaled)
-
-# -----------------------------
-# Model evaluation function (GridSearchCV + metrics + misclassified)
-# -----------------------------
-def evaluate_model_gs(clf, param_grid, Xtr, ytr, Xte, yte, original_df, test_indices, model_name):
-    grid_search = GridSearchCV(clf, param_grid, cv=5, scoring="accuracy", n_jobs=-1)
-    grid_search.fit(Xtr, ytr)
-
+ 
+# Function to evaluate traditional machine learning models using GridSearchCV
+def evaluate_model_gs(clf, param_grid, X, y, X_test, y_test, original_data, test_indices):
+    grid_search = GridSearchCV(clf, param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+    grid_search.fit(X, y)
     best_clf = grid_search.best_estimator_
     best_params = grid_search.best_params_
-
-    cv_scores = cross_val_score(best_clf, Xtr, ytr, cv=5, scoring="accuracy")
-
-    y_train_pred = best_clf.predict(Xtr)
-    y_test_pred = best_clf.predict(Xte)
-
-    train_accuracy = accuracy_score(ytr, y_train_pred)
-    test_accuracy = accuracy_score(yte, y_test_pred)
-    precision = precision_score(yte, y_test_pred, average="weighted", zero_division=0)
-    recall = recall_score(yte, y_test_pred, average="weighted", zero_division=0)
-    f1 = f1_score(yte, y_test_pred, average="weighted", zero_division=0)
-
-    # ROC-AUC (multiclass) if predict_proba is available
-    roc_auc = None
-    try:
-        lb = LabelBinarizer()
-        y_test_binarized = lb.fit_transform(yte)
-        y_test_prob = best_clf.predict_proba(Xte)
-        roc_auc = roc_auc_score(y_test_binarized, y_test_prob, average="macro", multi_class="ovr")
-    except Exception:
-        roc_auc = None
-
-    # Classification report
-    target_names = label_encoder.inverse_transform(np.unique(yte))
-    report = classification_report(yte, y_test_pred, target_names=target_names, zero_division=0)
-
-    # Misclassified instances
-    mis_idx = np.where(yte.values != y_test_pred)[0]
-    mis_rows = []
-    for i in mis_idx:
-        row_i = test_indices[i]
-        mis_rows.append({
-            "Species": original_df.loc[row_i, "Species"] if "Species" in original_df.columns else None,
-            "Tribe": original_df.loc[row_i, "Tribe"] if "Tribe" in original_df.columns else None,
-            "File_Name": original_df.loc[row_i, "File_Name"] if "File_Name" in original_df.columns else None,
-            "True_Label": label_encoder.inverse_transform([yte.iloc[i]])[0],
-            "Predicted_Label": label_encoder.inverse_transform([y_test_pred[i]])[0],
+    cv_scores = cross_val_score(best_clf, X, y, cv=5, scoring='accuracy')
+    
+    y_train_pred = best_clf.predict(X)
+    y_test_pred = best_clf.predict(X_test)
+    
+    train_accuracy = accuracy_score(y, y_train_pred)
+    test_accuracy = accuracy_score(y_test, y_test_pred)
+    precision = precision_score(y_test, y_test_pred, average='weighted')
+    recall = recall_score(y_test, y_test_pred, average='weighted')
+    f1 = f1_score(y_test, y_test_pred, average='weighted')
+    
+    lb = LabelBinarizer()
+    y_test_binarized = lb.fit_transform(y_test)
+    y_test_prob = best_clf.predict_proba(X_test)
+    roc_auc = roc_auc_score(y_test_binarized, y_test_prob, average='macro', multi_class='ovr')
+    
+    test_classification_report = classification_report(y_test, y_test_pred, target_names=label_encoder.inverse_transform(np.unique(y_test)))
+    
+    # Collect misclassified instances
+    misclassified_indices = np.where(y_test != y_test_pred)[0]
+    misclassified_instances = []
+    for idx in misclassified_indices:
+        misclassified_instances.append({
+            'Species': original_data.iloc[test_indices[idx]]['Species'],
+            'Tribe': original_data.iloc[test_indices[idx]]['Tribe'],
+            'True_Label': label_encoder.inverse_transform([y_test.iloc[idx]])[0],
+            'Predicted_Label': label_encoder.inverse_transform([y_test_pred[idx]])[0],
+            'File_Name':original_data.iloc[test_indices[idx]]["File_Name"]
         })
-
-    mis_df = pd.DataFrame(mis_rows)
-    out_name = model_name.lower().replace(" ", "_").replace("-", "_")
-    mis_df.to_csv(f"misclassified_{out_name}.csv", index=False)
-
-    return {
-        "best_model": best_clf,
-        "best_params": best_params,
-        "cv_mean": float(cv_scores.mean()),
-        "cv_std": float(cv_scores.std()),
-        "train_accuracy": float(train_accuracy),
-        "test_accuracy": float(test_accuracy),
-        "precision": float(precision),
-        "recall": float(recall),
-        "f1": float(f1),
-        "roc_auc": None if roc_auc is None else float(roc_auc),
-        "report": report,
-        "misclassified_csv": f"misclassified_{out_name}.csv",
-    }
-
-# -----------------------------
-# Define classifiers + grids (same spirit as your notebook)
-# -----------------------------
+    
+    return best_clf, best_params, cv_scores.mean(), cv_scores.std(), train_accuracy, test_accuracy, precision, recall, f1, roc_auc, test_classification_report, misclassified_instances
+ 
+     
+# Define the classifiers and their parameter grids
 classifiers = {
-    "Random Forest": (
-        RandomForestClassifier(random_state=42),
-        {
-            "n_estimators": [100, 200],
-            "max_depth": [10, 20],
-            "min_samples_split": [2, 10],
-            "min_samples_leaf": [1, 2],
-            "max_features": ["sqrt", "log2"],
-        },
-    ),
-    "K-Nearest Neighbors": (
-        KNeighborsClassifier(),
-        {
-            "n_neighbors": [3, 5, 7],
-            "weights": ["uniform", "distance"],
-            "metric": ["euclidean", "manhattan"],
-        },
-    ),
-    "Gradient Boosting": (
-        GradientBoostingClassifier(random_state=42),
-        {
-            "n_estimators": [100, 200],
-            "learning_rate": [0.01, 0.1],
-            "max_depth": [3, 5],
-            "min_samples_split": [2, 10],
-            "min_samples_leaf": [1, 2],
-        },
-    ),
+    "Random Forest": (RandomForestClassifier(random_state=42), {
+        'n_estimators': [100, 200],
+        'max_depth': [10, 20],
+        'min_samples_split': [2, 10],
+        'min_samples_leaf': [1, 2],
+        'max_features': ['sqrt', 'log2']
+    }),
+ 
+    "K-Nearest Neighbors": (KNeighborsClassifier(), {
+        'n_neighbors': [3, 5, 7],
+        'weights': ['uniform', 'distance'],
+        'metric': ['euclidean', 'manhattan']
+    }),
+    "Gradient Boosting": (GradientBoostingClassifier(random_state=42), {
+        'n_estimators': [100, 200],
+        'learning_rate': [0.01, 0.1],
+        'max_depth': [3, 5],
+        'min_samples_split': [2, 10],
+        'min_samples_leaf': [1, 2]
+    })
+   
 }
-
-# -----------------------------
-# Run evaluations
-# -----------------------------
+ 
+# Evaluate each classifier using GridSearchCV
 results = {}
-
-for name, (clf, grid) in classifiers.items():
-    print(f"\nEvaluating {name} with GridSearchCV...")
-    res = evaluate_model_gs(
-        clf,
-        grid,
-        X_train_pca,
-        y_train,
-        X_test_pca,
-        y_test,
-        df,
-        test_index,
-        name
-    )
-
-    results[name] = res
-
-    print("Best Params:", res["best_params"])
-    print(f"CV Mean Accuracy: {res['cv_mean']:.3f} ± {res['cv_std']:.3f}")
-    print(f"Training Accuracy: {res['train_accuracy']:.3f}")
-    print(f"Test Accuracy: {res['test_accuracy']:.3f}")
-    print(f"Precision: {res['precision']:.3f}")
-    print(f"Recall: {res['recall']:.3f}")
-    print(f"F1 Score: {res['f1']:.3f}")
-    print(f"ROC AUC: {res['roc_auc']}")
-    print("Saved misclassified table:", res["misclassified_csv"])
-    print("Classification Report:\n", res["report"])
-    print("=" * 80)
-
-# -----------------------------
-# Print summary
-# -----------------------------
-print("\nSummary:")
-for name, res in results.items():
-    print(
-        f"{name} | "
-        f"CV: {res['cv_mean']:.2f} ± {res['cv_std']:.2f} | "
-        f"Train: {res['train_accuracy']:.2f} | "
-        f"Test: {res['test_accuracy']:.2f} | "
-        f"F1: {res['f1']:.2f} | "
-        f"ROC AUC: {res['roc_auc']}"
-    )
+misclassified_instances = {}
+for name, (clf, param_grid) in classifiers.items():
+    print(f"Evaluating {name} with GridSearchCV...")
+    best_clf, best_params, mean_cv_score, std_cv_score, train_accuracy, test_accuracy, precision, recall, f1, roc_auc, test_classification_report, misclassified = evaluate_model_gs(clf, param_grid, X_train_pca, y_train, X_test_pca, y_test, data, test_index)
+    
+    results[name] = {
+        "best_params": best_params,
+        "cv_mean_score": mean_cv_score,
+        "cv_std_score": std_cv_score,
+        "train_accuracy": train_accuracy,
+        "test_accuracy": test_accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        "roc_auc": roc_auc,
+        "test_classification_report": test_classification_report
+    }
+    misclassified_instances[name] = misclassified
+    print(f"Best Params: {best_params}")
+    print(f"CV Mean Accuracy: {mean_cv_score} ± {std_cv_score}")
+    print(f"Training Accuracy: {train_accuracy}")
+    print(f"Test Accuracy: {test_accuracy}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
+    print(f"F1 Score: {f1}")
+    print(f"ROC AUC: {roc_auc}")
+    print(f"Test Classification Report:\n{test_classification_report}")
+    print("="*80)
+ 
+ 
+# Print a summary of results
+for name, result in results.items():
+    print(f"{name} - Best Params: {result['best_params']} | CV Mean Accuracy: {result['cv_mean_score']:.2f} ± {result['cv_std_score']:.2f} | Training Accuracy: {result['train_accuracy']:.2f} | Test Accuracy: {result['test_accuracy']:.2f} | Precision: {result['precision']:.2f} | Recall: {result['recall']:.2f} | F1 Score: {result['f1_score']:.2f} | ROC AUC: {result['roc_auc']:.2f}")
+ 
+# Create DataFrame for each classifier's misclassified instances
+for name, instances in misclassified_instances.items():
+    print(f"Misclassified Instances for {name}:")
+    misclassified_df = pd.DataFrame(instances)
+    print(misclassified_df)
+    print("="*80)
+ 
