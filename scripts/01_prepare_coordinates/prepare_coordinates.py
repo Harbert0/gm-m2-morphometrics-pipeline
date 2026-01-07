@@ -13,6 +13,7 @@ Output:
 Notes:
 - No alignment, scaling, or rotation is performed here
 - This step only reshapes and exports coordinates
+- Notebook-style implementation 
 """
 import numpy as np
 import pandas as pd
