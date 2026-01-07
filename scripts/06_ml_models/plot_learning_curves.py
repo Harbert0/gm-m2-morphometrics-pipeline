@@ -13,7 +13,7 @@ Output:
 - Displays learning curve plots (not saved automatically)
 
 Notes:
-- Notebook-style implementation (mirrors thesis workflow)
+- Notebook-style implementation 
 - StandardScaler + PCA(n_components=0.95) applied before learning curves
 """
 
