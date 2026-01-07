@@ -23,6 +23,7 @@ Notes:
   - semilandmarks: 1..21 (LM2..LM22)
 - The analytical approach follows established geometric morphometric procedures
   as implemented in geomorph, but is executed here using a custom Python workflow.
+- Notebook-style implementation 
 """
 
 import numpy as np
