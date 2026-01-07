@@ -21,7 +21,7 @@ Notes:
 import pandas as pd
  
 # Load the original data including metadata
-data = pd.read_csv('GM_M2_Metaconid_3_Cleaned.csv')
+data = pd.read_csv('__file_name__.csv')
  
 # Load the adjusted landmarks from R
 adjusted_data = pd.read_csv('adjusted_landmarks.csv')
@@ -34,8 +34,7 @@ metadata_df = data[metadata_columns]
 output_df = pd.concat([metadata_df.reset_index(drop=True), adjusted_data], axis=1)
  
 # Save the final data to a new CSV file
-output_df.to_csv('SuperImposed_GM_M2_4.csv', index=False)
+output_df.to_csv('__file_name__', index=False)
  
-print("Procrustes superimposed data saved to 'SuperImposed_GM_M2_4.csv'")
- 
+print(f"Procrustes superimposed data saved to: {OUTPUT_FILE}")
  
