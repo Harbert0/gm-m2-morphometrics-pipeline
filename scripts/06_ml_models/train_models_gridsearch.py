@@ -17,6 +17,7 @@ Notes:
   prior to model fitting.
 - Models evaluated: Random Forest, k-Nearest Neighbors, Gradient Boosting.
 - This script does not save outputs to disk unless explicitly added (e.g., to_csv()).
+- Notebook-style implementation
 """
 
 import numpy as np
