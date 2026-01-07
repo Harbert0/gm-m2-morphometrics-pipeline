@@ -1,0 +1,128 @@
+"""
+Step 02: Procrustes superimposition with sliding semilandmarks (Python)
+
+This script reproduces the thesis-era Python workflow for:
+1) Sliding semilandmarks using a thin-plate radial basis function (RBF) warp
+   anchored on two fixed anatomical landmarks (LM1 and LM23),
+2) Procrustes alignment of each specimen to a reference (mean) shape using
+   scipy.spatial.procrustes,
+3) Export of Procrustes-aligned coordinates concatenated with specimen metadata.
+
+Input:
+- - CSV file containing specimen metadata and 2D landmark coordinates
+  (columns: X1, Y1, ..., Xn, Yn)
+  Must contain metadata columns + coordinate columns: X1,Y1,...,X23,Y23
+
+Output:
+- CSV file containing specimen metadata concatenated with
+  Procrustes-aligned landmark coordinates
+
+Notes:
+- Landmark indices are 0-based in this script:
+  - fixed landmarks: 0 (LM1) and 22 (LM23)
+  - semilandmarks: 1..21 (LM2..LM22)
+- The analytical approach follows established geometric morphometric procedures
+  as implemented in geomorph, but is executed here using a custom Python workflow.
+"""
+
+import numpy as np
+import pandas as pd
+from scipy.spatial import procrustes
+from scipy.interpolate import Rbf
+
+
+# -----------------------------
+# User settings
+# -----------------------------
+INPUT_CSV = "input_landmarks.csv"
+OUTPUT_CSV = "procrustes_aligned_landmarks.csv"
+
+NUM_LANDMARKS = 23 # Change according to number of landmarks needed.
+COORDINATE_COLUMNS = [
+    "X1", "Y1", "X2", "Y2", "X3", "Y3", "X4", "Y4", "X5", "Y5", "X6", "Y6",
+    "X7", "Y7", "X8", "Y8", "X9", "Y9", "X10", "Y10", "X11", "Y11", "X12", "Y12",
+    "X13", "Y13", "X14", "Y14", "X15", "Y15", "X16", "Y16", "X17", "Y17", "X18", "Y18",
+    "X19", "Y19", "X20", "Y20", "X21", "Y21", "X22", "Y22", "X23", "Y23"
+]
+
+# Fixed anatomical landmarks
+LANDMARKS_INDICES = [0, 22] # [0, NUM_LANDMARKS - 1]
+SEMILANDMARKS_INDICES = list(range(1, 22)) # again landmark n-1 
+
+SLIDE_ITERATIONS = 10
+
+
+def tps_warp(source_xy, target_xy):
+    """Thin-plate RBF warp anchored on fixed landmarks."""
+    source_lm = source_xy[LANDMARKS_INDICES]
+    target_lm = target_xy[LANDMARKS_INDICES]
+
+    rbf_x = Rbf(
+        source_lm[:, 0], source_lm[:, 1], target_lm[:, 0],
+        function="thin_plate"
+    )
+    rbf_y = Rbf(
+        source_lm[:, 0], source_lm[:, 1], target_lm[:, 1],
+        function="thin_plate"
+    )
+
+    warped_x = rbf_x(source_xy[:, 0], source_xy[:, 1])
+    warped_y = rbf_y(source_xy[:, 0], source_xy[:, 1])
+
+    return np.column_stack([warped_x, warped_y])
+
+
+def slide_semilandmarks(specimen_xy, reference_xy, iterations=10):
+    """Iteratively slide semilandmarks toward reference shape."""
+    out = specimen_xy.copy()
+    for _ in range(iterations):
+        warped = tps_warp(out, reference_xy)
+        out[SEMILANDMARKS_INDICES] = warped[SEMILANDMARKS_INDICES]
+    return out
+
+
+# -----------------------------
+# Load and reshape data
+# -----------------------------
+data = pd.read_csv(INPUT_CSV)
+
+coords = data[COORDINATE_COLUMNS].to_numpy()
+num_specimens = coords.shape[0]
+reshaped = coords.reshape((num_specimens, NUM_LANDMARKS, 2))
+
+# Reference shape: mean configuration
+mean_shape = np.mean(reshaped, axis=0)
+
+aligned_shapes = np.zeros_like(reshaped, dtype=float)
+
+# -----------------------------
+# Slide + Procrustes align
+# -----------------------------
+for i in range(num_specimens):
+    specimen = reshaped[i].copy()
+    specimen_slid = slide_semilandmarks(
+        specimen,
+        mean_shape,
+        iterations=SLIDE_ITERATIONS
+    )
+
+    _, mtx2, _ = procrustes(mean_shape, specimen_slid)
+    aligned_shapes[i] = mtx2
+
+# -----------------------------
+# Export aligned coordinates
+# -----------------------------
+flat_aligned = aligned_shapes.reshape((num_specimens, NUM_LANDMARKS * 2))
+aligned_df = pd.DataFrame(flat_aligned, columns=COORDINATE_COLUMNS)
+
+metadata_cols = [c for c in data.columns if c not in COORDINATE_COLUMNS]
+metadata_df = data[metadata_cols]
+
+output_df = pd.concat(
+    [metadata_df.reset_index(drop=True),
+     aligned_df.reset_index(drop=True)],
+    axis=1
+)
+
+output_df.to_csv(OUTPUT_CSV, index=False)
+print(f"GPA + sliding semilandmarks completed: {OUTPUT_CSV}")
