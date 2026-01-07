@@ -1,13 +1,62 @@
 """
-Step 06: Machine learning classification with GridSearchCV
-
-Models:
-- Random Forest
-- k-Nearest Neighbors
-- Gradient Boosting
+Step 06: Machine learning classification (GridSearchCV) on Procrustes-aligned shape data
 
 Input:
-- SuperImposed_GM_M2_4.csv
+- CSV file containing specimen metadata and Procrustes-aligned landmark coordinates.
+
+Output:
+- Printed model evaluation results for each classifier:
+  - best hyperparameters (GridSearchCV)
+  - cross-validated accuracy (mean ± SD) on the training set
+  - train/test accuracy, weighted precision/recall/F1, multiclass ROC-AUC
+  - test-set classification report
+- Printed tables of test-set misclassified specimens (Species, Tribe, File_Name, true vs predicted label)
+
+Notes:
+- Features are standardized (fit on training set) and reduced using PCA (95% variance)
+  prior to model fitting.
+- Models evaluated: Random Forest, k-Nearest Neighbors, Gradient Boosting.
+- This script does not save outputs to disk unless explicitly added (e.g., to_csv()).
+"""
+
+
+import matplotlib.pyplot as plt
+from sklearn.model_selection import learning_curve, StratifiedKFold
+ 
+def plot_learning_curve(estimator, X, y, title, cv=None, n_jobs=None, train_sizes=np.linspace(0.1, 1.0, 10)):
+    plt.figure()
+    plt.title(title)
+    plt.xlabel("Training examples")
+    plt.ylabel("Score")
+ 
+    train_sizes, train_scores, test_scores = learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+ 
+    plt.grid()
+ 
+    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.1,
+                     color="r")
+    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
+             label="Training score")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
+             label="Cross-validation score")
+ 
+    plt.legend(loc="best")
+    plt.show()
+ 
+# Plot learning curves for each classifier
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+ 
+for name, (clf, param_grid) in classifiers.items():
+    plot_learning_curve(clf, X_train_pca, y_train, f"{name} Learning Curve for Principal Components", cv=cv, n_jobs=-1)
+ 
+ 
 
 Outputs:
 - Prints summary of best params and performance for each model
