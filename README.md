@@ -3,16 +3,16 @@ Reproducible pipeline for geometric morphpometrics of bovid M2 landmarks: ImageJ
 
 # Geometric Morphometrics Pipeline (GPA with Sliding Semilandmarks)
 
-This repository contains a reproducible geometric morphometrics workflow for
-processing 2D landmark data from digitized specimens. The pipeline implements 
-Generalized Procrustes Analysis (GPA with sliding semilandmarks, followed by 
-multivariate nad supervised classification analyses of Procrustes-aligned shapes. 
 
-The workflow is conceptually consistent with established geometric morphometric
-approaches, as implemented in the *geomorph* R package(Baken et al., 2021; Adams et al., 2025). 
-To support reproducibility and flexibility, the repository
-provides both Python- and geomorph-based implementations of GPA with sliding
-semilandmarks.
+This repository contains a reproducible geometric morphometrics workflow for
+processing 2D landmark data from digitized specimens. The pipeline implements
+Generalized Procrustes Analysis (GPA) with sliding semilandmarks, followed by
+multivariate and supervised classification analyses of Procrustes-aligned shapes.
+
+The workflow follows established geometric morphometric procedures for GPA and 
+semilandmark sliding (e.g., geomorph; Adams et al., 2025; Baken et al., 2021). 
+GPA and semilandmakr sliding were implemented in Python using a custom workflow 
+conceptually aligned with the geomorph framework. 
 
 ---
 
@@ -25,10 +25,13 @@ semilandmarks.
    - Landmark coordinates are reshaped and formatted for GPA.
 
 3. **Generalized Procrustes Analysis with sliding semilandmarks**
-   - GPA is performed with sliding semilandmarks to minimize bending energy.
-   - Two implementation options are provided:
-     - a Python-based implementation
-     - an R-based implementation using geomorph
+   - GPA is used to remove variation due to translation, rotation, and scale.
+   - The first and last landmarks are treated as fixed anatomical landmarks,
+     while intermediate points are treated as sliding semilandmarks.
+   - Semilandmarks are adjusted to minimize thin-plate spline (TPS) bending energy
+     relative to a reference shape.
+   - GPA and semilandmark sliding are implemented in Python using a custom workflow
+     conceptually consistent with geomorph.
 
 4. **Metadata concatenation**
    - Procrustes-aligned coordinates are merged with specimen metadata.
