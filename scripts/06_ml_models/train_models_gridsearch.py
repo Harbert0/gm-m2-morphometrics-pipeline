@@ -17,7 +17,7 @@ Outputs:
   - misclassified_gradient_boosting.csv
 
 Notes:
-- Notebook-style implementation (mirrors thesis workflow)
+- Notebook-style implementation
 - StandardScaler + PCA(n_components=0.95) applied before model training
 """
 
