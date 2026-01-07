@@ -11,7 +11,7 @@ multivariate and supervised classification analyses of Procrustes-aligned shapes
 
 The workflow follows established geometric morphometric procedures for GPA and 
 semilandmark sliding (e.g., geomorph; Adams et al., 2025; Baken et al., 2021). 
-GPA and semilandmakr sliding were implemented in Python using a custom workflow 
+GPA and semilandmark sliding were implemented in Python using a custom workflow 
 conceptually aligned with the geomorph framework. 
 
 ---
