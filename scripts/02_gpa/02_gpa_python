@@ -11,7 +11,7 @@ This script reproduces the thesis-era Python workflow for:
 Input:
 - - CSV file containing specimen metadata and 2D landmark coordinates
   (columns: X1, Y1, ..., Xn, Yn)
-  Must contain metadata columns + coordinate columns: X1,Y1,...,X23,Y23
+  Must contain metadata columns + coordinate columns: X1,Y1,...,X23,Y23, ..., Xn,Yn
 
 Output:
 - CSV file containing specimen metadata concatenated with
