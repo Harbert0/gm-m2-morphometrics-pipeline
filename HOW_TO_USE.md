@@ -356,8 +356,3 @@ The repository is intended to clarify:
 
 
 
-All scripts included in this repository are implemented in Python unless otherwise noted.
-
----
-
-
