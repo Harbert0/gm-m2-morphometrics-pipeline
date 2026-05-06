@@ -38,7 +38,7 @@ The analyses were conducted using ImageJ/Fiji and Python.
 | Model evaluation                | Python, scikit-learn        | Accuracy, precision, recall, F1 score, ROC AUC, confusion matrices, learning curves |
 | Plotting                        | Python, matplotlib, seaborn | Visualization of analysis outputs                                                   |
 
-** Note:  R/geomorph was not directly executed in this repository. The GPA and sliding semilandmark workflow is described as being conceptually consistent with established geometric morphometric procedures used in geomorph, but the analyses provided here were conducted in Python.
+** Note:  R/geomorph was not directly executed in this repository. The GPA and sliding semilandmark workflow is conceptually consistent with established geometric morphometric procedures used in geomorph, but the analyses provided here were conducted in Python.
           All scripts included in this repository are implemented in Python unless otherwise noted.
 
 
