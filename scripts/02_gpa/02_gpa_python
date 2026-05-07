@@ -1,7 +1,7 @@
 """
 Step 02: Procrustes superimposition with sliding semilandmarks (Python)
 
-This script reproduces the thesis-era Python workflow for:
+This script reproduces the Python workflow for:
 1) Sliding semilandmarks using a thin-plate radial basis function (RBF) warp
    anchored on two fixed anatomical landmarks (LM1 and LM23),
 2) Procrustes alignment of each specimen to a reference (mean) shape using
