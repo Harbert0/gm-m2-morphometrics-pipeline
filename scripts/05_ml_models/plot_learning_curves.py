@@ -1,5 +1,5 @@
 """
-Step 06b: Learning curves for machine learning models
+Step 05b: Learning curves for machine learning models
 
 Models:
 - Random Forest

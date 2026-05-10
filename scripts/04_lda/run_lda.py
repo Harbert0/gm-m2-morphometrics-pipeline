@@ -1,5 +1,5 @@
 """
-Step 05: Linear Discriminant Analysis (LDA) on Procrustes-aligned coordinates
+Step 04: Linear Discriminant Analysis (LDA) on Procrustes-aligned coordinates
 
 Input:
 -(metadata + Procrustes-aligned landmark coordinates csv

@@ -1,5 +1,5 @@
 """
-Step 04: Principal Component Analysis (PCA) on Procrustes-aligned coordinates
+Step 03: Principal Component Analysis (PCA) on Procrustes-aligned coordinates
 
 Input:
 - metadata + Procrustes-aligned landmark coordinates

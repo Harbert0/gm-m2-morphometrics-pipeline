@@ -1,5 +1,5 @@
 """
-Step 06: Machine learning classification (GridSearchCV) on Procrustes-aligned shape data
+Step 05: Machine learning classification (GridSearchCV) on Procrustes-aligned shape data
 
 Input:
 - CSV file containing specimen metadata and Procrustes-aligned landmark coordinates.
