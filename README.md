@@ -1,54 +1,60 @@
 # gm-m2-morphometrics-pipeline
-Reproducible pipeline for geometric morphometrics of bovid M2 landmarks: ImageJ export -> Generalized Procrustes Analysis  with sliding semilandmarks ->PCA -> LDA and ML classification
 
-# Geometric Morphometrics Pipeline (GPA with Sliding Semilandmarks)
+A reproducible geometric morphometrics and classification workflow for investigating associations between mandibular second molar (M2) cusp shape and dietary categories in bovids.
 
+## About the project
 
-This repository contains a reproducible geometric morphometrics workflow for
-processing 2D landmark data from digitized specimens. The pipeline implements
-Generalized Procrustes Analysis (GPA) with sliding semilandmarks, followed by
-multivariate and supervised classification analyses of Procrustes-aligned shapes.
+This repository accompanies the manuscript *Decoding Diets: Applying Machine Learning Models to Geometric Morphometric Analysis of Bovid Dental Mesowear Signatures*. It provides the computational workflow for converting digitized 2D dental landmarks into aligned shape coordinates, visualizing major patterns of shape variation, assessing phylogenetic signal, and evaluating dietary classification using linear and nonlinear statistical models.
 
-The workflow follows established geometric morphometric procedures for GPA and 
-semilandmark sliding (e.g., geomorph; Adams et al., 2025; Baken et al., 2021). 
-GPA and semilandmark sliding were implemented in Python using a custom workflow 
-conceptually aligned with the geomorph framework. 
+## Getting started
 
----
+**For installation, required data, exact run order, input paths, expected outputs, and troubleshooting, see [HOW_TO_USE.md](HOW_TO_USE.md).** This README provides scientific context rather than duplicating the step-by-step instructions.
 
-## Pipeline overview
+## Scientific workflow
 
-1. **Landmark digitization and export (ImageJ)**
-   - Digitized landmarks are exported as shifted XY coordinates using an ImageJ macro.
+1. **Landmark digitization:** M2 outline coordinates are digitized in ImageJ/Fiji and organized into a consistent specimen-by-coordinate table.
+2. **Shape alignment:** Generalized Procrustes Analysis (GPA) removes translation, rotation, and scale differences. The supplied Python workflow provides an optional tangent-constrained semilandmark sliding procedure; whether sliding occurs depends on the GPA notebook setting.
+3. **Exploratory shape analysis:** Principal Component Analysis (PCA) summarizes axes of aligned shape variation and supports scatter plots and shape-model visualizations.
+4. **Supervised classification:** Linear Discriminant Analysis (LDA), Random Forest, k-nearest neighbors, and Gradient Boosting are used to evaluate relationships between shape predictors and dietary groups. Modeling workflows perform their own PCA rather than relying on exported exploratory PCA scores; shape-only and shape-plus-centroid-size variants are compared.
+5. **Phylogenetic signal:** Pagel's λ is estimated separately for species-averaged Procrustes coordinate traits using an induced Open Tree of Life phylogeny, with false-discovery-rate correction.
 
-2. **Coordinate preprocessing**
-   - Landmark coordinates are reshaped and formatted for GPA.
+The downstream PCA, LDA, ML, and phylogenetic analyses are **separate branches from the GPA-aligned coordinate dataset**, not four required sequential transformations.
 
-3. **Generalized Procrustes Analysis with sliding semilandmarks**
-   - GPA is used to remove variation due to translation, rotation, and scale.
-   - The first and last landmarks are treated as fixed anatomical landmarks,
-     while intermediate points are treated as sliding semilandmarks.
-   - Semilandmarks are adjusted to minimize thin-plate spline (TPS) bending energy
-     relative to a reference shape.
-   - GPA and semilandmark sliding are implemented in Python using a custom workflow
-     conceptually consistent with geomorph.
+## Repository structure
 
-4. **Metadata concatenation**
-   - Procrustes-aligned coordinates are merged with specimen metadata.
+```text
+Data/
+scripts/
+  00_imagej/
+  01_prepare_coordinates/
+  02_gpa/
+  03_pca/
+  04_lda/
+  05_ml_models/
+HOW_TO_USE.md
+README.md
+environment.yml
+requirements.txt
+software.md
+LICENSE
+```
 
-5. **Multivariate analysis**
-   - Principal Component Analysis (PCA) of Procrustes-aligned coordinates.
+The R phylogenetic script `Pagals_Lambda.R` is provided separately; consult [HOW_TO_USE.md](HOW_TO_USE.md) for its location and execution.
 
-6. **Classification**
-   - Linear Discriminant Analysis (LDA)
-   - Machine learning models (Random Forest, kNN, Gradient Boosting)
-   - Cross-validation, learning curves, and misclassification analysis
+## Reproducibility and interpretation
 
----
+The workflow provides coordinate processing, exploratory visualization, model fitting, cross-validation, held-out evaluation, and phylogenetic-signal estimates. Classification performance should be interpreted in the context of dietary class overlap, sampling, and potential taxonomic structure. Refer to the manuscript for the experimental rationale, analysis choices, and interpretation of results.
+
+**Methodological note:** The uploaded GPA notebook currently sets `SLIDE_SEMILANDMARKS = False`. The optional sliding code uses a tangent-constrained distance-to-reference rule; The results in the manuscript for LDA and ML workflows were used with `SLIDE_SEMILANDMARKS = TRUE`
 
 ## References
 
+Baken E, Collyer M, Kaliontzopoulou A, Adams D (2021). geomorph v4.0 and gmShiny: enhanced analytics and a new graphical interface for a comprehensive morphometric experience. *Methods in Ecology and Evolution*, 12, 2355–2363.
 
-Baken E, Collyer M, Kaliontzopoulou A, Adams D (2021). “geomorph v4.0 and gmShiny: enhanced analytics and a new graphical interface for a comprehensive morphometric experience.” Methods in Ecology and Evolution, 12, 2355-2363.
+Adams D, Collyer M, Kaliontzopoulou A, Baken E (2025). *Geomorph: Software for geometric morphometric analyses.* R package version 4.0.10. https://cran.r-project.org/package=geomorph.
 
-Adams D, Collyer M, Kaliontzopoulou A, Baken E (2025). “Geomorph: Software for geometric morphometric analyses. R package version 4.0.10.” https://cran.r-project.org/package=geomorph.
+These geomorph references provide methodological context; the supplied GPA notebook uses a custom Python implementation rather than executing R/geomorph.
+
+## License
+
+See [LICENSE](LICENSE).
