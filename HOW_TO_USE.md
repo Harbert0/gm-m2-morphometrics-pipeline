@@ -69,7 +69,7 @@ SLIDE_SEMILANDMARKS = False
 
 The uploaded GPA version contains `INPUT_FILE = Path("INSERT FILE PATH HERE")`; **replace this placeholder** before running. Run cells from top to bottom.
 
-`SLIDE_SEMILANDMARKS` is **False by default** in the uploaded notebook, so that setting runs GPA without sliding. If enabled, the notebook uses its custom tangent-constrained semilandmark sliding procedure. Do not describe a default run as TPS bending-energy sliding. Check the actual landmark indices in the notebook before enabling sliding.
+`SLIDE_SEMILANDMARKS` is **False by default** in the uploaded notebook, so that setting runs GPA without sliding. If enabled, the notebook uses its custom tangent-constrained semilandmark sliding procedure. Check the actual landmark indices in the notebook before enabling sliding.
 
 **Primary downstream input:**
 
