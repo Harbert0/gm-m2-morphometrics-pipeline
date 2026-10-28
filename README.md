@@ -10,7 +10,7 @@ This repository accompanies the manuscript *Decoding Diets: Applying Machine Lea
 
 **For installation, required data, exact run order, input paths, expected outputs, and troubleshooting, see [HOW_TO_USE.md](HOW_TO_USE.md).** 
 
-## Data Processing workflow
+## Data Processing Workflow
 
 1. **Landmark digitization:** M2 outline coordinates are digitized in ImageJ/Fiji and organized into a consistent specimen-by-coordinate table.
 2. **Shape alignment:** Generalized Procrustes Analysis (GPA) removes translation, rotation, and scale differences. The supplied Python workflow provides an optional tangent-constrained semilandmark sliding procedure; whether sliding occurs depends on the GPA notebook setting.
