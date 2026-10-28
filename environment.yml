@@ -1,3 +1,11 @@
+# Conda environment for the Python geometric morphometrics pipeline.
+# Create: conda env create -f environment.yml
+# Activate: conda activate gm-m2-morphometrics
+# Start notebooks: jupyter lab
+#
+# The ImageJ/Fiji macro requires a separate ImageJ/Fiji installation.
+# Pagel's lambda analysis uses R; install its packages in R as documented
+# in HOW_TO_USE.md (ape, phytools, dplyr, stringr, readr, rotl).
 name: gm-m2-morphometrics
 channels:
   - conda-forge
@@ -10,6 +18,8 @@ dependencies:
   - matplotlib
   - seaborn
   - tensorflow
+  - jupyterlab
+  - ipykernel
   - pip
   - pip:
       - scikeras
