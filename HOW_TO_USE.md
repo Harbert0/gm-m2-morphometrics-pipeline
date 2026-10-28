@@ -1,356 +1,179 @@
 # How to Use This Repository
 
-This repository accompanies the manuscript:
+This is the **primary execution guide** for the `gm-m2-morphometrics-pipeline` repository, accompanying *Decoding Diets: Applying Machine Learning Models to Geometric Morphometric Analysis of Bovid Dental Mesowear Signatures*. For scientific background and citations, see [README.md](README.md).
 
-**Decoding Diets: Applying Machine Learning Models to Geometric Morphometric Analysis of Bovid Dental Mesowear Signatures**
+## 1. Pipeline and run order
 
-The purpose of this repository is to provide a transparent and reproducible workflow for moving from digitized mandibular second molar landmark coordinates to geometric morphometric analysis and supervised dietary classification.
-
-The workflow includes:
-
-1. landmark digitization in ImageJ/Fiji,
-2. coordinate preparation,
-3. Generalized Procrustes Analysis with sliding semilandmarks,
-4. metadata merging,
-5. Principal Component Analysis,
-6. Linear Discriminant Analysis,
-7. machine learning classification,
-8. model evaluation and visualization.
-
----
-
-## 1. Software Used
-
-The analyses were conducted using ImageJ/Fiji and Python.
-
-| Analysis step                   | Software/packages           | Purpose                                                                             |
-|---------------------------------|-----------------------------|-------------------------------------------------------------------------------------|
-| Landmark digitization           | ImageJ/Fiji                 | Manual placement and export of two-dimensional landmark coordinates                 |
-| Coordinate preparation          | Python, pandas, numpy       | Reshape and organize coordinate data                                                |
-| Generalized Procrustes Analysis | Python, custom scripts      | Align landmark configurations by translation, rotation, and scaling                 |
-| Sliding semilandmarks           | Python, custom scripts      | Slide semilandmarks along the outline to improve anatomical correspondence          |
-| Metadata merging                | Python, pandas              | Combine Procrustes-aligned coordinates with specimen metadata                       |
-| PCA                             | Python, scikit-learn        | Reduce dimensionality of Procrustes-aligned shape coordinates                       |
-| LDA                             | Python, scikit-learn        | Baseline supervised dietary classification                                          |
-| Random Forest                   | Python, scikit-learn        | Nonlinear supervised classification                                                 |
-| k-nearest neighbors             | Python, scikit-learn        | Distance-based supervised classification                                            |
-| Gradient Boosting               | Python, scikit-learn        | Nonlinear ensemble classification                                                   |
-| Model evaluation                | Python, scikit-learn        | Accuracy, precision, recall, F1 score, ROC AUC, confusion matrices, learning curves |
-| Plotting                        | Python, matplotlib, seaborn | Visualization of analysis outputs                                                   |
-
-** Note:  R/geomorph was not directly executed in this repository. The GPA and sliding semilandmark workflow is conceptually consistent with established geometric morphometric procedures used in geomorph, but the analyses provided here were conducted in Python.
-          All scripts included in this repository are implemented in Python unless otherwise noted.
-
-
----
-
-## 2. Input Data
-
-The dataset used in the manuscript is provided as:
-
-```
-Example_Data.csv
+```text
+M2 images
+  → scripts/00_imagej/                Digitization/export
+  → scripts/01_prepare_coordinates/   Format XY coordinates
+  → scripts/02_gpa/                   GPA, aligned coordinates + metadata
+       ├─ scripts/03_pca/             Exploratory PCA, plots and shape models
+       ├─ scripts/04_lda/             LDA with model-specific PCA
+       ├─ scripts/05_ml_models/       ML with PCA in modeling pipelines
+       └─ Pagals_Lambda.R             Species-level coordinate phylogenetic signal
 ```
 
-This file corresponds to the supplementary coordinate table associated with the manuscript.
+**Important:** PCA, LDA, ML, and Pagel's λ are separate analyses of the GPA-aligned coordinate table. You do **not** need to run the exploratory PCA notebook before running LDA or ML; the classification workflows handle their own PCA. The R analysis uses coordinates directly, not PCA scores.
 
-The file includes specimen information and two-dimensional landmark coordinates.
+The current repository contains `00_imagej`, `01_prepare_coordinates`, `02_gpa`, `03_pca`, `04_lda`, and `05_ml_models`.
 
-Each specimen contains 23 coordinate points:
+## 2. Get the code and install software
 
-| Coordinate            | Landmark type             | Description                                                                          |
-|-----------------------|---------------------------|--------------------------------------------------------------------------------------|
-| X1, Y1                | Fixed anatomical landmark | Lowest point between the two cusps of the lingual surface                            |
-| X2/Y2 through X22/Y22 | Sliding semilandmarks     | Semilandmarks along the occlusal outline of the entoconid cusp                       |
-| X23, Y23              | Fixed anatomical landmark | End of the hypoconulid and edge of M2 between the second and third mandibular molars |
-
-Landmarks 1 and 23 are treated as fixed anatomical landmarks. Landmarks 2 through 22 are treated as semilandmarks.
-
----
-
-## 3. Environment Setup
-
-To reproduce the Python analysis environment, use either the conda environment file or the pip requirements file.
-
-### Option 1: Conda
+Install ImageJ/Fiji, Python (preferably using conda), and Jupyter Notebook/JupyterLab. **R is additionally needed only for Pagel's λ.**
 
 ```bash
+git clone https://github.com/Harbert0/gm-m2-morphometrics-pipeline.git
+cd gm-m2-morphometrics-pipeline
 conda env create -f environment.yml
 conda activate gm-m2-morphometrics
+jupyter lab
 ```
 
-### Option 2: pip
+Alternative Python dependency installation:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-The conda environment is recommended because it provides a more consistent software environment across operating systems.
+The environment name shown above follows the existing guide; if the `name:` field in `environment.yml` differs, activate that name instead. Open notebooks in Jupyter and run their cells **top to bottom**, after updating configuration paths.
 
----
+**Path convention:** Several uploaded notebooks use `../../results/...`. These relative paths assume the Jupyter working directory is the notebook's analysis folder (`scripts/02_gpa`, etc.). Check `Path.cwd()` in a code cell. Relative paths resolve against the working directory, not necessarily the notebook location. If unsure, set absolute paths.
 
-## 4. Recommended Run Order
+## 3. Prepare the input data
 
-The scripts are organized numerically to reflect the order of the analysis pipeline.
+### Step 0 — ImageJ/Fiji digitization (`scripts/00_imagej/`)
 
-Run the folders in this order:
+Digitize the 2D M2 outline consistently across specimens using the repository's ImageJ workflow and export the landmark XY coordinates. Keep the **same landmark numbering and anatomical orientation** for every specimen. Refer to the macro's instructions for its exact invocation and export naming.
 
-```
-scripts/00_imagej/
-scripts/01_prepare_coordinates/
-scripts/02_gpa/
-scripts/03_merge_metadata/
-scripts/04_pca/
-scripts/05_lda/
-scripts/06_ml_models/
+### Step 1 — Coordinate formatting (`scripts/01_prepare_coordinates/`)
+
+Run `prepare_coordinates.py` using the input and output settings defined in that script. The resulting table must have one row per specimen and 23 coordinate pairs named in the form:
+
+```text
+X1, Y1, X2, Y2, ... X23, Y23
 ```
 
-Each folder corresponds to a major step in the workflow.
+Retain the metadata needed by later analyses (particularly `Species`, dietary class, and identifiers). Check that each specimen has 46 numeric coordinate values and that points are in the same order. **The command-line interface and exact output filename of `prepare_coordinates.py` were not verified from its full source in this review**; use the script's settings/help rather than assuming an undocumented command-line flag.
 
----
+## 4. Run Generalized Procrustes Analysis (`scripts/02_gpa/`)
 
-## 5. Step-by-Step Workflow
+Open the GPA notebook (`GPA_Procrustes_workflow.ipynb` or the equivalent filename in the repository). At the top of the notebook set, for example:
 
-### Step 0: Landmark digitization in ImageJ/Fiji
-
-Folder:
-
-```
-scripts/00_imagej/
+```python
+INPUT_FILE = Path("../../Data/Example_Data.csv")  # replace with actual prepared CSV
+OUTPUT_DIR = Path("../../results/gpa")
+SLIDE_SEMILANDMARKS = False
 ```
 
-Purpose:
+The uploaded GPA version contains `INPUT_FILE = Path("INSERT FILE PATH HERE")`; **replace this placeholder** before running. Run cells from top to bottom.
 
-This folder contains the ImageJ/Fiji macro or instructions used to export two-dimensional landmark coordinates from mandibular second molar images.
+`SLIDE_SEMILANDMARKS` is **False by default** in the uploaded notebook, so that setting runs GPA without sliding. If enabled, the notebook uses its custom tangent-constrained semilandmark sliding procedure. Do not describe a default run as TPS bending-energy sliding. Check the actual landmark indices in the notebook before enabling sliding.
 
-The digitization workflow begins with manual placement of landmarks along the occlusal outline of the entoconid cusp.
+**Primary downstream input:**
 
-Output from this step:
-
-```
-raw landmark coordinate file
+```text
+results/gpa/procrustes_aligned_coordinates.csv
 ```
 
-The exported coordinates are then used as input for the Python preprocessing scripts.
+**Other GPA outputs:** `gpa_specimen_summary.csv`, `gpa_convergence_history.csv`, `gpa_mean_shape.csv` and diagnostic plots such as aligned-shape overlay, convergence and Procrustes-distance histogram (when generated).
 
----
+Before proceeding, verify that the aligned CSV contains `X1`, `Y1`, ... and that the needed specimen metadata survived preprocessing.
 
-### Step 1: Prepare coordinate data
+## 5. Run downstream analyses independently
 
-Folder:
+Each of the next three notebooks reads `procrustes_aligned_coordinates.csv`. They can be run in any order after GPA.
 
-```
-scripts/01_prepare_coordinates/
-```
+### A. Exploratory PCA (`scripts/03_pca/`)
 
-Purpose:
+Open the PCA notebook and set:
 
-This step reshapes and organizes the landmark coordinate data exported from ImageJ/Fiji.
-
-This step ensures that each specimen has the correct coordinate structure:
-
-```
-X1, Y1, X2, Y2, ..., X23, Y23
+```python
+INPUT_FILE = Path("../../results/gpa/procrustes_aligned_coordinates.csv")
+OUTPUT_DIR = Path("../../results/pca")
 ```
 
-Output from this step:
+**Important code check:** In the supplied PCA notebook, one active cell also contains an absolute path under `/Users/rebeccaharbert/...` in `pd.read_csv(...)`. Replace that read with `pd.read_csv(INPUT_FILE)` or remove the obsolete cell before using the notebook on another machine. Run the notebook in order.
 
-```
-cleaned coordinate table
-```
+Outputs include `pca_scores_with_metadata.csv`, `pca_explained_variance.csv`, `pca_loadings.csv`, scree and PC scatter plots, loadings heatmap, and PC1/PC2 shape-model visualizations.
 
-This cleaned coordinate file is used for Generalized Procrustes Analysis.
+**Use:** exploratory interpretation of shape variation, *not* as a mandatory source of scores for either classifier.
 
----
+### B. Linear Discriminant Analysis (`scripts/04_lda/`)
 
-### Step 2: Generalized Procrustes Analysis and sliding semilandmarks
+Open the LDA notebook and configure:
 
-Folder:
-
-```
-scripts/02_gpa/
+```python
+INPUT_FILE = Path("../../results/gpa/procrustes_aligned_coordinates.csv")
+OUTPUT_DIR = Path("../../results/lda")
 ```
 
-Purpose:
+The uploaded LDA notebook has a second, active `INPUT_FILE` assignment with `INSERT FILE PATH...` that **overrides** the usable path above it. Remove/replace that placeholder. Then run cells in order.
 
-This step performs Generalized Procrustes Analysis on the two-dimensional landmark configurations.
+This workflow evaluates PC dimensionality with leave-one-out cross-validation; runs LDA with internally constructed PC predictors; compares shape-only and shape-plus-centroid-size predictors; and evaluates held-out test performance.
 
-The GPA procedure removes non-shape variation associated with position, orientation, and scale.
+Main outputs include `lda_loocv_pc_selection.csv`, `lda_model_performance_summary.csv`, `lda_classification_report.csv`, `lda_confusion_matrix.csv`, `lda_test_set_predictions.csv`, `lda_misclassified_specimens.csv`, `lda_shape_vs_shape_cs_comparison.csv`, and plots/learning curves. Check the output directory for additional PCA and deformation-grid figures.
 
-Landmark treatment:
+### C. Machine-learning classification (`scripts/05_ml_models/`)
 
-- Landmarks 1 and 23 are fixed anatomical landmarks.
-- Landmarks 2 through 22 are treated as sliding semilandmarks.
+Open the ML notebook and check:
 
-The semilandmarks are slid along the outline to improve correspondence among specimens.
-
-Output from this step:
-
-```
-Procrustes-aligned coordinates
+```python
+INPUT_FILE = Path("../../results/gpa/procrustes_aligned_coordinates.csv")
+FALLBACK_INPUT_FILE = Path("../../Example_Data.csv")
+OUTPUT_DIR = Path("../../results/ml_models")
 ```
 
-These coordinates represent shape variation after removing non-shape variation.
+The notebook will read the primary file if it exists, **otherwise it uses the fallback**. Confirm the printed chosen input: if you intend to classify GPA-aligned coordinates, ensure the primary CSV exists. A fallback run may not represent the same analysis.
 
----
+Run all cells top to bottom. The models include Random Forest, k-nearest neighbors, and Gradient Boosting; the ML workflow fits PCA inside its training/cross-validation pipelines, and compares shape-only with shape-plus-centroid-size variants.
 
-### Step 3: Merge Procrustes coordinates with metadata
+Outputs include `ml_model_performance_summary.csv`, `ml_model_metric_summary.csv`, `ml_shape_cs_model_performance_summary.csv`, `ml_shape_vs_shape_cs_comparison.csv`, misclassification CSVs, classification reports, confusion matrices, learning curves, and comparison figures.
 
-Folder:
+## 6. Pagel's λ in R (separate analysis)
 
-```
-scripts/03_merge_metadata/
-```
+Locate `Pagals_Lambda.R` (note its uploaded filename spelling; check the path in your GitHub checkout) and open it in R/RStudio. It calls `install.packages` for `ape`, `phytools`, `dplyr`, `stringr`, `readr`, and `rotl`; install these if needed. The script also contacts the **Open Tree of Life** service, so internet access is required.
 
-Purpose:
+Run the script and use the file-picker from:
 
-This step combines the Procrustes-aligned coordinates with specimen metadata, including taxonomic and dietary information.
-
-Output from this step:
-
-```
-analysis-ready dataset
+```r
+data <- read_csv(file.choose())
 ```
 
-This file is used for PCA, LDA, and machine learning analyses.
+Select `results/gpa/procrustes_aligned_coordinates.csv`. It expects a `Species` column and coordinate columns exactly named `X1`, `Y1`, and so forth. The script averages coordinates by species; matches species to Open Tree Taxonomy; generates an induced tree; adds Grafen branch lengths if none are present; estimates Pagel's λ per coordinate; and applies FDR correction.
 
----
+Outputs are saved **to R's working directory**, including:
 
-### Step 4: Principal Component Analysis
-
-Folder:
-
-```
-scripts/04_pca/
+```text
+bovid_tree_from_open_tree_renamed.tre
+pagels_lambda_procrustes_coordinates.csv
+pagels_lambda_procrustes_summary.csv
 ```
 
-Purpose:
+Use `getwd()` to see where they were written. Inspect the reported unmatched species and the number of matched tips before interpreting the analysis. The script uses a topology-derived branch-length approximation when required; those are not calibrated divergence times.
 
-This step performs Principal Component Analysis on the Procrustes-aligned coordinates.
+## 7. Troubleshooting and reproducibility checks
 
-PCA is used to summarize major axes of shape variation and reduce dimensionality prior to classification.
+| Issue | Action |
+|---|---|
+| `FileNotFoundError` | Replace all `INSERT FILE PATH` placeholders and check `Path.cwd()` against relative paths. |
+| PCA reads local `/Users/...` path | Replace the hard-coded `pd.read_csv(...)` line with `pd.read_csv(INPUT_FILE)`. |
+| LDA cannot read its input | Remove its later placeholder `INPUT_FILE` assignment, which overrides the earlier valid path. |
+| ML unexpectedly uses example data | Inspect the printed chosen input and ensure GPA output exists at `INPUT_FILE`. |
+| Missing metadata columns | Verify that preprocessing and GPA retain specimen ID, `Species`, diet, and other required metadata. |
+| Different results from manuscript | Confirm the input dataset, random seeds, train/test partitions, PC-selection settings, centroid-size option, and semilandmark sliding setting. |
+| Pagel's λ species mismatch | Inspect Open Tree name-matching and unmatched-species diagnostics; verify exact `Species` names. |
 
-Output from this step:
+The scripts are provided for research reproducibility. **Before claiming an exact reproduction of manuscript results**, record your script commit, package versions, data version, GPA sliding flag, and modeling configurations. In particular, changing sliding or using a fallback input changes the analysis.
 
-```
-PCA scores
-PCA variance summary
-PCA plots
-```
+## 8. Documentation scope
 
-The PCA scores are used as predictors in the supervised classification analyses.
+- [README.md](README.md): scientific background, aims, methods overview, and references.
+- **HOW_TO_USE.md (this file):** execution order, input configuration, outputs, troubleshooting.
+- `software.md`: additional software information.
+- `environment.yml` and `requirements.txt`: Python environment specifications.
 
----
-
-### Step 5: Linear Discriminant Analysis
-
-Folder:
-
-```
-scripts/05_lda/
-```
-
-Purpose:
-
-This step performs Linear Discriminant Analysis using PCA scores as input variables and dietary category as the response variable.
-
-LDA is included as a baseline supervised classification method.
-
-Output from this step may include:
-
-```
-LDA classification results
-cross-validation accuracy
-held-out test-set performance
-confusion matrix
-misclassification summary
-```
-
----
-
-### Step 6: Machine learning classification
-
-Folder:
-
-```
-scripts/06_ml_models/
-```
-
-Purpose:
-
-This step trains and evaluates nonlinear machine learning models for dietary classification.
-
-Models included:
-
-- Random Forest
-- k-nearest neighbors
-- Gradient Boosting
-
-The machine learning models are trained using PCA scores as input variables and dietary category as the response variable.
-
-The dataset is split into training and testing subsets using stratified sampling to preserve dietary class representation.
-
-Hyperparameter tuning is performed using cross-validation within the training data only.
-
-Final model performance is evaluated once on the held-out test set.
-
-Output from this step may include:
-
-```
-model performance summaries
-accuracy
-precision
-recall
-F1 score
-ROC AUC
-confusion matrices
-learning curves
-misclassification summaries
-```
-
----
-
-## 6. Notes on Data Leakage Prevention
-
-To avoid data leakage, model fitting and preprocessing steps used for classification are performed within the training data and then applied to validation or test data.
-
-The held-out test set is not used during model tuning.
-
-Final model performance is assessed only after model selection is complete.
-
----
-
-## 7. Expected Outputs
-
-By running the complete workflow, users should be able to generate:
-
-- cleaned landmark coordinate files,
-- Procrustes-aligned coordinates,
-- PCA scores,
-- PCA variance summaries,
-- LDA results,
-- Random Forest results,
-- k-nearest neighbors results,
-- Gradient Boosting results,
-- classification metrics,
-- confusion matrices,
-- learning curves,
-- misclassification summaries.
-
----
-
-## 8. Relationship to the Manuscript
-
-This repository provides the computational workflow associated with the geometric morphometric and classification analyses described in the manuscript.
-
-The repository is intended to clarify:
-
-1. which programs were used,
-2. where each analysis was conducted,
-3. how the coordinate data were processed,
-4. how GPA and sliding semilandmarks were implemented,
-5. how PCA, LDA, and machine learning models were run,
-6. how model performance was evaluated.
 
 ---
 
