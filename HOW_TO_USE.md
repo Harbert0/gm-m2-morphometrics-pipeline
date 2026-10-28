@@ -55,7 +55,7 @@ Run `prepare_coordinates.py` using the input and output settings defined in that
 X1, Y1, X2, Y2, ... X23, Y23
 ```
 
-Retain the metadata needed by later analyses (particularly `Species`, dietary class, and identifiers). Check that each specimen has 46 numeric coordinate values and that points are in the same order. **The command-line interface and exact output filename of `prepare_coordinates.py` were not verified from its full source in this review**; use the script's settings/help rather than assuming an undocumented command-line flag.
+Ensure that the prepared coordinate dataset contains all 23 landmarks (46 X/Y coordinate values per specimen), with landmarks consistently ordered across specimens. Preserve specimen identifiers, species names, and dietary classifications so that the aligned coordinates can be linked to specimen metadata for downstream analyses (PCA, LDA, ML, and Pagel's λ).
 
 ## 4. Run Generalized Procrustes Analysis (`scripts/02_gpa/`)
 
