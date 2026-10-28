@@ -13,6 +13,11 @@ scikit-learn>=1.2
 matplotlib>=3.6
 seaborn>=0.12
 
+# Notebook execution
+jupyterlab
+ipykernel
+
 # Optional (used in some scripts / exploratory notebooks)
 tensorflow>=2.10
 scikeras>=0.12
+
