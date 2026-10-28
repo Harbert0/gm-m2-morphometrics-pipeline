@@ -94,7 +94,7 @@ INPUT_FILE = Path("../../results/gpa/procrustes_aligned_coordinates.csv")
 OUTPUT_DIR = Path("../../results/pca")
 ```
 
-**Important code check:** In the supplied PCA notebook, one active cell also contains an absolute path under `/Users/rebeccaharbert/...` in `pd.read_csv(...)`. Replace that read with `pd.read_csv(INPUT_FILE)` or remove the obsolete cell before using the notebook on another machine. Run the notebook in order.
+Run the notebook in order.
 
 Outputs include `pca_scores_with_metadata.csv`, `pca_explained_variance.csv`, `pca_loadings.csv`, scree and PC scatter plots, loadings heatmap, and PC1/PC2 shape-model visualizations.
 
