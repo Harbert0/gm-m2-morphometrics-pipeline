@@ -1,0 +1,307 @@
+# ============================================================
+# Pagel's lambda on Procrustes coordinates
+# No PCA / no principal components
+# ============================================================
+
+# Install packages if needed
+install.packages(c("ape", "phytools", "dplyr", "stringr", "readr","rotl"))
+
+
+# ------------------------------------------------------------
+# 0. Load packages
+# ------------------------------------------------------------
+
+library(rotl)
+library(ape)
+library(phytools)
+library(dplyr)
+library(stringr)
+library(readr)
+
+# ------------------------------------------------------------
+# 1. Load Procrustes coordinate data
+# ------------------------------------------------------------
+
+data <- read_csv(file.choose())
+
+# Remove spaces from column names
+names(data) <- str_replace_all(names(data), "\\s+", "")
+
+# ------------------------------------------------------------
+# 2. Identify Procrustes coordinate columns only
+# ------------------------------------------------------------
+
+coord_cols <- grep("^[XY][0-9]+$", names(data), value = TRUE)
+
+# Sort as X1, Y1, X2, Y2, ...
+coord_cols <- coord_cols[order(
+  as.numeric(str_extract(coord_cols, "[0-9]+")),
+  factor(str_extract(coord_cols, "^[XY]"), levels = c("X", "Y"))
+)]
+
+cat("Number of Procrustes coordinate columns:", length(coord_cols), "\n")
+print(coord_cols)
+
+if (length(coord_cols) == 0) {
+  stop("No Procrustes coordinate columns found. Expected columns named X1, Y1, X2, Y2, etc.")
+}
+
+# ------------------------------------------------------------
+# 3. Clean species names in the dataset
+# ------------------------------------------------------------
+# Important: convert to lowercase so species names match Open Tree tip labels.
+
+data <- data %>%
+  mutate(
+    Species_clean = Species %>%
+      str_replace_all(" ", "_") %>%
+      str_trim() %>%
+      str_to_lower()
+  )
+
+# ------------------------------------------------------------
+# 4. Average Procrustes coordinates by species
+# ------------------------------------------------------------
+# Pagel's lambda requires one trait value per species.
+# If multiple specimens exist per species, coordinates are averaged.
+
+species_coords <- data %>%
+  group_by(Species_clean) %>%
+  summarise(
+    across(all_of(coord_cols), ~ mean(as.numeric(.x), na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+# ------------------------------------------------------------
+# 5. Match species names to Open Tree Taxonomy
+# ------------------------------------------------------------
+# Open Tree matching works better with spaces rather than underscores.
+
+species_names_for_rotl <- species_coords$Species_clean %>%
+  str_replace_all("_", " ") %>%
+  str_trim()
+
+matched_names <- tnrs_match_names(species_names_for_rotl)
+
+matched_names_clean <- matched_names %>%
+  filter(!is.na(ott_id)) %>%
+  mutate(
+    data_species = search_string %>%
+      str_replace_all(" ", "_") %>%
+      str_trim() %>%
+      str_to_lower()
+  )
+
+cat("Species in data:", nrow(species_coords), "\n")
+cat("Species matched by Open Tree:", nrow(matched_names_clean), "\n")
+
+if (nrow(matched_names_clean) < 2) {
+  stop("Fewer than two species were matched by Open Tree. Cannot build tree.")
+}
+
+# ------------------------------------------------------------
+# 6. Create phylogenetic tree from Open Tree of Life
+# ------------------------------------------------------------
+
+tree <- tol_induced_subtree(ott_ids = matched_names_clean$ott_id)
+
+if (is.null(tree)) {
+  stop("Tree creation failed. Open Tree returned NULL.")
+}
+
+if (!inherits(tree, "phylo")) {
+  stop("Tree object is not a phylo object.")
+}
+
+# ------------------------------------------------------------
+# 7. Rename and clean tree tips
+# ------------------------------------------------------------
+# Open Tree tip labels often include OTT IDs.
+# This extracts those IDs and maps them back to your dataset species names.
+
+tree_ott_ids <- str_extract(tree$tip.label, "ott[0-9]+")
+tree_ott_ids <- as.numeric(str_remove(tree_ott_ids, "ott"))
+
+idx <- match(tree_ott_ids, matched_names_clean$ott_id)
+
+cat("Tree tips:", length(tree$tip.label), "\n")
+cat("Tree tips matched by OTT ID:", sum(!is.na(idx)), "\n")
+
+if (sum(!is.na(idx)) == 0) {
+  stop("No tree tips could be matched back to species names using OTT IDs.")
+}
+
+tree$tip.label <- matched_names_clean$data_species[idx]
+
+# Drop any tree tips that could not be renamed
+if (any(is.na(tree$tip.label))) {
+  warning("Some tree tips could not be renamed and will be dropped.")
+  tree <- drop.tip(tree, which(is.na(tree$tip.label)))
+}
+
+# Final cleanup of tree labels
+tree$tip.label <- tree$tip.label %>%
+  str_replace_all(" ", "_") %>%
+  str_trim() %>%
+  str_to_lower()
+
+# Save tree for reuse
+write.tree(tree, "bovid_tree_from_open_tree_renamed.tre")
+
+# Optional: plot tree
+plot(tree, cex = 0.5)
+
+# ------------------------------------------------------------
+# 8. Match species data to tree tips
+# ------------------------------------------------------------
+
+species_in_data <- species_coords$Species_clean
+species_in_tree <- tree$tip.label
+
+common_species <- intersect(species_in_data, species_in_tree)
+
+cat("Species in coordinate data:", length(species_in_data), "\n")
+cat("Species in tree:", length(species_in_tree), "\n")
+cat("Matched species:", length(common_species), "\n")
+
+print(common_species)
+
+if (length(common_species) < 2) {
+  stop("Fewer than two species are shared between the data and tree.")
+}
+
+# Drop tree species not present in coordinate data
+tree_matched <- drop.tip(
+  tree,
+  setdiff(tree$tip.label, common_species)
+)
+
+# Keep only coordinate rows present in the tree
+species_coords_matched <- species_coords %>%
+  filter(Species_clean %in% tree_matched$tip.label)
+
+# Reorder coordinate data to match tree tip order
+species_coords_matched <- species_coords_matched[
+  match(tree_matched$tip.label, species_coords_matched$Species_clean),
+]
+
+# Confirm alignment
+stopifnot(all(tree_matched$tip.label == species_coords_matched$Species_clean))
+
+cat("Final matched species used in Pagel's lambda:", nrow(species_coords_matched), "\n")
+# ------------------------------------------------------------
+# 8b. Add branch lengths if tree has none
+# ------------------------------------------------------------
+# Pagel's lambda requires branch lengths.
+# Open Tree synthetic trees often contain topology only, so we add Grafen branch lengths.
+
+if (is.null(tree_matched$edge.length)) {
+  cat("Tree has no branch lengths. Adding Grafen branch lengths using compute.brlen().\n")
+  tree_matched <- compute.brlen(tree_matched, method = "Grafen")
+}
+
+# Check branch lengths
+summary(tree_matched$edge.length)
+
+# Optional: check whether tree is ultrametric
+cat("Is tree ultrametric?", is.ultrametric(tree_matched), "\n")
+
+# ------------------------------------------------------------
+# 9. Estimate Pagel's lambda for each Procrustes coordinate
+# ------------------------------------------------------------
+
+lambda_results <- data.frame(
+  Coordinate = character(),
+  Lambda = numeric(),
+  LogL = numeric(),
+  P_value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (coord in coord_cols) {
+  
+  trait <- species_coords_matched[[coord]]
+  names(trait) <- species_coords_matched$Species_clean
+  
+  # Remove missing values if present
+  keep <- !is.na(trait)
+  trait_clean <- trait[keep]
+  
+  tree_clean <- drop.tip(
+    tree_matched,
+    setdiff(tree_matched$tip.label, names(trait_clean))
+  )
+  
+  trait_clean <- trait_clean[tree_clean$tip.label]
+  
+  # Skip coordinates with no variation
+  if (length(unique(trait_clean)) < 2) {
+    warning(paste("Skipping", coord, "- no variation in trait values."))
+    next
+  }
+  
+  lambda_fit <- phylosig(
+    tree_clean,
+    trait_clean,
+    method = "lambda",
+    test = TRUE
+  )
+  
+  lambda_results <- rbind(
+    lambda_results,
+    data.frame(
+      Coordinate = coord,
+      Lambda = lambda_fit$lambda,
+      LogL = lambda_fit$logL,
+      P_value = lambda_fit$P,
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+# ------------------------------------------------------------
+# 10. Adjust p-values and save results
+# ------------------------------------------------------------
+
+lambda_results <- lambda_results %>%
+  mutate(
+    FDR_P_value = p.adjust(P_value, method = "fdr")
+  ) %>%
+  arrange(desc(Lambda))
+
+print(lambda_results)
+
+write_csv(lambda_results, "pagels_lambda_procrustes_coordinates.csv")
+
+# ------------------------------------------------------------
+# 11. Summary statistics
+# ------------------------------------------------------------
+
+lambda_summary <- lambda_results %>%
+  summarise(
+    Mean_lambda = mean(Lambda, na.rm = TRUE),
+    Median_lambda = median(Lambda, na.rm = TRUE),
+    Min_lambda = min(Lambda, na.rm = TRUE),
+    Max_lambda = max(Lambda, na.rm = TRUE),
+    Significant_raw_p = sum(P_value < 0.05, na.rm = TRUE),
+    Significant_FDR = sum(FDR_P_value < 0.05, na.rm = TRUE)
+  )
+
+print(lambda_summary)
+
+write_csv(lambda_summary, "pagels_lambda_procrustes_summary.csv")
+
+# ------------------------------------------------------------
+# 12. Optional diagnostics: unmatched species
+# ------------------------------------------------------------
+
+unmatched_data_species <- setdiff(species_in_data, species_in_tree)
+unmatched_tree_species <- setdiff(species_in_tree, species_in_data)
+
+cat("\nSpecies in data but not tree:\n")
+print(unmatched_data_species)
+
+cat("\nSpecies in tree but not data:\n")
+print(unmatched_tree_species)
+
+getwd()
